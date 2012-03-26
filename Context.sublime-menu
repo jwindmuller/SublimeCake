@@ -1,0 +1,19 @@
+[
+// {
+//     "caption" : "Sublime Cake",
+//     "id": "sublime_cake",
+//     "children":
+//     [
+//         {
+//             "id" : "cakephp_test_all",
+//             "command": "cakephp_test_all",
+//             "caption": "Run all Tests"
+//         },
+//         {
+//             "id": "cakephp_test",
+//             "command": "cakephp_test",
+//             "caption" : "Run this test"
+//         }
+//     ]
+// }
+]

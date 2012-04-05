@@ -110,7 +110,7 @@ class CakePHPTestProcess(threading.Thread):
 
         if functionName:
             params.append("--filter")
-            params.append("/^%(function_name)s$/" % {"function_name" : functionName})
+            params.append("/%(function_name)s$/" % {"function_name" : functionName})
 
         params = " ".join(params)
 

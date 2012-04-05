@@ -1,23 +1,11 @@
 import sublime, sublime_plugin, subprocess, os, re, threading
 
-PRINT_CONTEXT = False
-DEBUG_ENABLED = True
- 
-class CakephpTestCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
-        sels = self.view.sel()
-        threads = []
-        for sel in sels:
-            functionName = self.__fetchCurrentFunctionName(sel)
-            if functionName:
-                t = CakePHPTestProcess(self, functionName)
-                threads.append( t )
-                t.start()
-        self.handle_threads(edit, threads)
+class SublimeCakeBaseCommand:
+    threads = []
 
-    def handle_threads(self, edit, threads, i = 0):
+    def handle_threads(self, edit, i = 0):
         next_threads = []
-        for thread in threads:
+        for thread in self.threads:
             if thread.is_alive():
                 next_threads.append(thread)
                 continue
@@ -25,11 +13,16 @@ class CakephpTestCommand(sublime_plugin.TextCommand):
                 continue
             else:
                 self.__displayResult(thread)
-                debug(thread.result);
-        threads = next_threads
-        if len(threads):
-            self.view.set_status('sublime_cake', 'Testing' + ('.' * i).ljust(5) )
-            sublime.set_timeout(lambda: self.handle_threads(edit, threads, (i+1) % 4), 500)
+        self.threads = next_threads
+        if len(self.threads):
+            animation = (' ' * i) + '=' + (' ' * (3-i))
+            if i>3:
+                animation = animation[::-1]
+            self.view.set_status(
+                'sublime_cake',
+                'Testing [%s]' % animation
+            )
+            sublime.set_timeout(lambda: self.handle_threads(edit, (i+1) % 6), 500)
             return
         self.view.end_edit(edit)
 
@@ -59,6 +52,28 @@ class CakephpTestCommand(sublime_plugin.TextCommand):
 
         self.view.window().run_command("show_panel", {"panel": "output.php_result"})
 
+class CakephpTestCommand(SublimeCakeBaseCommand, sublime_plugin.TextCommand):
+    def run(self, edit):
+        sels = self.view.sel()
+        for sel in sels:
+            functionName = self.__fetchCurrentFunctionName(sel)
+            if functionName:
+                t = CakePHPTestProcess(self, functionName)
+                self.threads.append( t )
+                t.start()
+        self.handle_threads(edit)
+
+    def is_visible(self, args = None):
+        sel = self.view.sel()[0]
+        functionName = self.__fetchCurrentFunctionName(sel)
+        return functionName != None and functionName[:4] == "test"
+
+    def description(self, args = None):
+        sel = self.view.sel()[0]
+        functionName = self.__fetchCurrentFunctionName(sel)
+        # # if functionName and functionName.substr(0,4)=='test':
+        return 'Run test: ' + functionName
+
     def __fetchCurrentFunctionName(self, currentSelection):
         functionName = None
         preg = re.compile('^\s+[^s]*\s*function\s+([^\(]+).*$')
@@ -72,18 +87,12 @@ class CakephpTestCommand(sublime_plugin.TextCommand):
                 break
         return functionName
 
-    def is_visible(self, args = None):
-        sel = self.view.sel()[0]
-        functionName = self.__fetchCurrentFunctionName(sel)
-        debug(functionName)
-        return functionName != None and functionName[:4] == "test"
-
-    def description(self, args = None):
-        sel = self.view.sel()[0]
-        functionName = self.__fetchCurrentFunctionName(sel)
-        debug('description')
-        # # if functionName and functionName.substr(0,4)=='test':
-        return 'Run test: ' + functionName
+class SublimeCakeTestAll(SublimeCakeBaseCommand, sublime_plugin.TextCommand):
+    def run(self, edit):
+        t = CakePHPTestProcess(self)
+        self.threads.append( t )
+        t.start()
+        self.handle_threads(edit)
 
 class CakePHPTestProcess(threading.Thread):
     def __init__(self, command, functionName = None):
@@ -96,12 +105,13 @@ class CakePHPTestProcess(threading.Thread):
             self.__getCake2ConsolePath() + 'cake.php',
             "testsuite app",
             self.__getTestName(),
-            "--debug --no-colors"
+            "--debug --no-colors --stderr"
         ]
 
         if functionName:
             params.append("--filter")
             params.append("/^%(function_name)s$/" % {"function_name" : functionName})
+
         params = " ".join(params)
 
         self.params = params
@@ -109,8 +119,8 @@ class CakePHPTestProcess(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        self.p = subprocess.Popen(self.params, stdout=subprocess.PIPE, shell=True)
-        self.result, self.error = self.p.communicate()
+        self.p = subprocess.Popen(self.params, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        self.error, self.result = self.p.communicate()
 
     def __getBasePath(self):
         filePath = os.path.dirname( self.command.view.file_name() )
@@ -132,6 +142,9 @@ class CakePHPTestProcess(threading.Thread):
         regex = '^(.*?%s).*$' % typeOfTest
         testName = re.match(regex, fileName).group(1)
         return typeOfTest + '/' + testName
+
+PRINT_CONTEXT = False
+DEBUG_ENABLED = True
 
 def debug(text, context=""):
     if DEBUG_ENABLED:

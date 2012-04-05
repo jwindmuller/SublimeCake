@@ -6,7 +6,7 @@
     [
         {
             "id" : "cakephp_test_all",
-            "command": "cakephp_test_all",
+            "command": "sublime_cake_test_all",
             "caption": "Run all Tests"
         },
         {

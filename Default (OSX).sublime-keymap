@@ -1,6 +1,10 @@
 [  
     {  
         "keys": ["ctrl+alt+t"],
-        "command": "cakephp_test"  
-    }  
-]  
+        "command": "cakephp_test"
+    },
+    {
+        "keys": ["ctrl+alt+shift+t"],
+        "command": "sublime_cake_test_all"
+    }
+]

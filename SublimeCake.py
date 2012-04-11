@@ -1,7 +1,9 @@
 import sublime, sublime_plugin, subprocess, os, re, threading
 
+
 class SublimeCakeBaseCommand:
     threads = []
+    animationReturning = True
 
     def handle_threads(self, edit, i = 0):
         next_threads = []
@@ -15,9 +17,14 @@ class SublimeCakeBaseCommand:
                 self.__displayResult(thread)
         self.threads = next_threads
         if len(self.threads):
-            animation = (' ' * i) + '=' + (' ' * (3-i))
-            if i>3:
+            if i == 0:
+                self.animationReturning = not self.animationReturning
+
+            animation = (' ' * i) + '=' + (' ' * (5-i))
+
+            if self.animationReturning:
                 animation = animation[::-1]
+                
             self.view.set_status(
                 'sublime_cake',
                 'Testing [%s]' % animation
@@ -34,7 +41,9 @@ class SublimeCakeBaseCommand:
         )
 
     def __displayResult(self, thread):
-        result = thread.params + '\n\n' + thread.result
+        result = thread.params + '\n\n'
+        result+= thread.result.decode('utf-8') + '\n\n'
+        result+= thread.error.decode('utf-8') + '\n\n'
         result.replace("\n", "")
 
         if not hasattr(self, 'output_view'):
@@ -103,14 +112,15 @@ class CakePHPTestProcess(threading.Thread):
         params = [
             self.command.view.settings().get('php_binary_path'),
             self.__getCake2ConsolePath() + 'cake.php',
-            "testsuite app",
-            self.__getTestName(),
-            "--debug --no-colors --stderr"
+            "testsuite --debug --no-colors --stderr",
         ]
 
         if functionName:
             params.append("--filter")
             params.append("/%(function_name)s$/" % {"function_name" : functionName})
+
+        params.append("app")
+        params.append(self.__getTestName())
 
         params = " ".join(params)
 
@@ -120,7 +130,7 @@ class CakePHPTestProcess(threading.Thread):
 
     def run(self):
         self.p = subprocess.Popen(self.params, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        self.error, self.result = self.p.communicate()
+        self.result, self.error = self.p.communicate()
 
     def __getBasePath(self):
         filePath = os.path.dirname( self.command.view.file_name() )

@@ -158,6 +158,6 @@ DEBUG_ENABLED = True
 
 def debug(text, context=""):
     if DEBUG_ENABLED:
-        print '[toggle_single_line_css]: ' + text
+        print '[SublimeCake]: ' + text
     if PRINT_CONTEXT and context != "":
         print '>>> ' + context
